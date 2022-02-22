@@ -1,15 +1,15 @@
-pragma solidity =0.6.6;
+pragma solidity =0.5.8;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
 import './interfaces/IUniswapV2Router02.sol';
-import './libraries/UniswapV2Library.sol';
+import './libraries/DebondLibrary.sol';
 import './libraries/SafeMath.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IWETH.sol';
 
-contract Router is IRouter {
+contract DebondRouter is IDebondRouter {
     using SafeMath for uint;
 
     address public immutable override factory;
@@ -35,28 +35,23 @@ contract Router is IRouter {
     function _addLiquidity(
         address tokenA,
         uint amountADesired,
-        //uint amountBDesired,
-        uint amountAMin,
-        //uint amountBMin
-    ) internal virtual returns (uint amountA, uint amountB) {
+        //uint amountAMin,
+        uint amountDBITMin
+    ) internal virtual returns (uint amountA, uint amountDBIT) {
         // create the pair if it doesn't exist yet
         if (IDebondFactory(factory).getPair(tokenA, DBIT) == address(0)) {
-            IDebondFactory(factory).createPair(tokenA, DBIT);
+            IDebondFactory(factory).createPair(tokenA, DBIT); // remplacer par création nouvelle classde erc3475, 
+            //vérifier si liste de paires autorisées.
         }
-        (uint reserveA, reserveDbit) = Library.getReserves(factory, tokenA, DBIT);
+        (uint reserveA, reserveDbit) = DebondLibrary.getReserves(factory, tokenA, DBIT);
         if (reserveA == 0 && reserveDbit == 0) {
-            (amountA, amountB) = (amountADesired, amountBDesired);
+            (amountA, amountB) = (amountADesired, amountBDesired); // combien minter de dbit si il y a 0?
         } else {
-            uint amountBOptimal = UniswapV2Library.quote(amountADesired, reserveA, reserveB);
-            if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
-                (amountA, amountB) = (amountADesired, amountBOptimal);
-            } else {
-                uint amountAOptimal = UniswapV2Library.quote(amountBDesired, reserveB, reserveA);
-                assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
-                (amountA, amountB) = (amountAOptimal, amountBDesired);
-            }
+            uint amountDBITOptimal = DebondLibrary.HowMuchDbit(amountADesired, reserveA, reserveB); 
+            //How much debit should calculate how much debit should be minted, 
+            //maybe should be added in core contracts and not in debond library
+            require(amountBOptimal >= amountDBITMin, 'UniswapV2Router: formula of dbit minting changed too fast');
+            (amountA, amountDBIT) = (amountADesired, amountDBITOptimal);
         }
     }
     function addLiquidity(
@@ -64,19 +59,19 @@ contract Router is IRouter {
         
         uint amountADesired,
         
-        uint amountAMin,
+        uint amountDBITMin,
         
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountDbit, uint liquidity) {
-        (amountA, amountDbit) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin); 
+        (amountA, amountDbit) = _addLiquidity(tokenA, tokenDBIT, amountADesired, amountDBITMin); 
         //_addliquidity should be a function calculating how much dbit is needed for minting.
-        address pair = Library.pairFor(factory, tokenA, tokenDbit); 
+        address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit); //???
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA); 
         IDBITERC20(Dbit_address).mint(pair, amountDbit); // we need to do our dbit minting function
         //TransferHelper.safeTransferFrom(tokenDbit, msg.sender, pair, amountDbit); au lieu de minter puis d'envoyer vers
         // la pool, on mint directement vers la pool (address pair).
-        liquidity = DebondPair(pair, class, nounce).mint(to); // mint of the bond
+        liquidity = IDebondPair(pair).mint(to, nounce); // mint of the bond, we do not precise class as we provide pair address
     }
     function addLiquidityETH(
         address token,
