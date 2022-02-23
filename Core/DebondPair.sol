@@ -1,14 +1,14 @@
 pragma solidity =0.5.16;
 
-import './interfaces/IUniswapV2Pair.sol';
-import './UniswapV2ERC20.sol';
+import './interfaces/IDebondPair.sol';
+import './DebondERC20.sol';
 import './libraries/Math.sol';
 import './libraries/UQ112x112.sol';
 import './interfaces/IERC20.sol';
-import './interfaces/IUniswapV2Factory.sol';
-import './interfaces/IUniswapV2Callee.sol';
+import './interfaces/DebondFactory.sol';
+import './interfaces/IDebondCallee.sol';
 
-contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
+contract DebondPair is IDebondPair, DebondERC20 {
     using SafeMath  for uint;
     using UQ112x112 for uint224; // For fractions 
 
@@ -120,8 +120,14 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         }
     }
 
+    function rate(uint amount, uint interest ) public pure returns(uint result){
+        uint swaping = amount * interest;
+        result = reserveDbit/(reserveTokenA+swaping);
+    }
+
     // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to) external lock returns (uint liquidity) {
+    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters*/, uint interest, uint amoutA) external lock returns (uint liquidity) {
+        // rate : how much interest you earn in fixed term 0 coupon.
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         //uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -137,6 +143,13 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
             liquidity = amount0.mul(_totalSupply) / _reserve0;
         }
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');
+        if (choice == 0) {
+            _mint(to, AmountA, /*time = nounce,*/, class1 /* a definir : on mint du tokenA bond*/);
+            _mint(to, rate(AmountA, intesrest), /*time = nounce,*/, class2 /*on mint duDbit bond*/);
+         }
+         else{
+             _mint(to, AmountA + rate(AmountA, intesrest), /*time = nounce,*/, class2 /*on mint duDbit bond*/);
+         }
         _mint(to, liquidity);     //change mint function to mint bond.
 
         _update(balance0, balance1, _reserve0, _reserve1);
