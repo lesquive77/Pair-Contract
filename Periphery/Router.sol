@@ -63,17 +63,19 @@ contract DebondRouter is IDebondRouter {
         
         address to,
         uint deadline,
-        uint choice  //0 for stacking, 1 for buying
+        uint choice,  //0 for stacking, 1 for buying
+        mapping nounce, // verify format here : [ (time1, %1), (time 2, %2), etc...]
+        uint interest
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountDbit, uint liquidity) {
         (amountA, amountDbit) = _addLiquidity(tokenA, tokenDBIT, amountADesired, amountDBITMin); 
         //_addliquidity should be a function calculating how much dbit is needed for minting.
         address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit); //???
         
-        TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA); 
+        TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA); // do not forget to update dbit balance in the pool
         IDBITERC20(Dbit_address).mint(pair, amountDbit); // we need to do our dbit minting function
         //TransferHelper.safeTransferFrom(tokenDbit, msg.sender, pair, amountDbit); au lieu de minter puis d'envoyer vers
         // la pool, on mint directement vers la pool (address pair).
-        liquidity = IDebondPair(pair).mint(to, amountA, choice); // mint of the bond, we do not precise class as we provide pair address
+        liquidity = IDebondPair(pair).mint(to, /* amountA, does not need to be added*/ choice, nounce, interest); // mint of the bond, we do not precise class as we provide pair address
     }
     function addLiquidityETH(
         address token,

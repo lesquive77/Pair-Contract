@@ -126,34 +126,37 @@ contract DebondPair is IDebondPair, DebondERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters*/, uint interest, uint amoutA) external lock returns (uint liquidity) {
+    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters*/,mapping nounce, uint interest) external lock returns (uint liquidity) {
         // rate : how much interest you earn in fixed term 0 coupon.
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
-        //uint balance1 = IERC20(token1).balanceOf(address(this));
+        uint balanceDbit = IERC20(tokenDbit).balanceOf(address(this));
         uint amount0 = balance0.sub(_reserve0);
-        //uint amount1 = balance1.sub(_reserve1);
+        uint amountDbit = balanceDbit.sub(_reserve1);
 
         bool feeOn = _mintFee(_reserve0, _reserve1);
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         /*if (_totalSupply == 0) {
             liquidity = Math.sqrt(amount0.mul(amount0)).sub(MINIMUM_LIQUIDITY);
            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
-        } else if {*/ // take care later 
+        } else if { 
             liquidity = amount0.mul(_totalSupply) / _reserve0;
-        }
-        require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');
+        }   // take care later 
+        require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');  */
         if (choice == 0) {
-            _mint(to, AmountA, /*time = nounce,*/, class1 /* a definir : on mint du tokenA bond*/);
-            _mint(to, rate(AmountA, intesrest), /*time = nounce,*/, class2 /*on mint duDbit bond*/);
+            for ( (time,percent) in nounce){
+                _mint(to, Amount0*percent, time, class1 /* a definir : on mint du tokenA bond*/);
+                _mint(to, rate(Amount0*percent, intesrest), time , class2 /*on mint duDbit bond*/);
+            }
          }
          else{
-             _mint(to, AmountA + rate(AmountA, intesrest), /*time = nounce,*/, class2 /*on mint duDbit bond*/);
+             for ( (time,percent) in nounce){
+                _mint(to, Amount0*percent + rate(Amount0*percent, intesrest), time, class2 /*on mint duDbit bond*/); 
+             //remember to store _rate=rate(x) in a local variable for saving gas
+             }
          }
-        _mint(to, liquidity);     //change mint function to mint bond.
-
-        _update(balance0, balance1, _reserve0, _reserve1);
-        if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+        _update(balance0, balanceDbit, _reserve0, _reserve1);
+        if (feeOn) kLast = uint(reserve0).mul(reserve1); 
         emit Mint(msg.sender, amount0, amount1);
     }
 
