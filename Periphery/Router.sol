@@ -63,19 +63,22 @@ contract DebondRouter is IDebondRouter {
         
         address to,
         uint deadline,
-        uint choice,  //0 for stacking, 1 for buying
+        uint choice,  //0 for stacking, 1 for buying : bool is better? see gas
         mapping nounce, // verify format here : [ (time1, %1), (time 2, %2), etc...]
-        uint interest
+        // faire [uint] nounce (time) et [uint] interets et vérifier que les tailles sont égales
+        uint interest,
+        uint class
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountDbit, uint liquidity) {
         (amountA, amountDbit) = _addLiquidity(tokenA, tokenDBIT, amountADesired, amountDBITMin); 
         //_addliquidity should be a function calculating how much dbit is needed for minting.
-        address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit); //???
+        address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit); // this is not a pair but a n-uplet
         
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA); // do not forget to update dbit balance in the pool
         IDBITERC20(Dbit_address).mint(pair, amountDbit); // we need to do our dbit minting function
         //TransferHelper.safeTransferFrom(tokenDbit, msg.sender, pair, amountDbit); au lieu de minter puis d'envoyer vers
         // la pool, on mint directement vers la pool (address pair).
-        liquidity = IDebondPair(pair).mint(to, /* amountA, does not need to be added*/ choice, nounce, interest); // mint of the bond, we do not precise class as we provide pair address
+        liquidity = IDebondPair(pair).mint(to, /* amountA, does not need to be added*/ choice, nounce, interest, class); // mint of the bond, we do not precise class as we provide pair address
+        // interest should be calculated and not directly put in param, because everyone can call this function
     }
     function addLiquidityETH(
         address token,
@@ -105,19 +108,21 @@ contract DebondRouter is IDebondRouter {
     // **** REMOVE LIQUIDITY ****
 
     //add step here : verify if the bond is reedemable.
+    //when we redeem, we are not sure if we burn dbit or not
     function removeLiquidity(
         address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
+        //address tokenDbit,
+        uint amountA,
+        //uint amountAMin,
+        //uint amountBMin,
         address to,
         uint deadline
     ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
-        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to);
-        (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
+        address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit);
+        //DebondPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        //send bond to pair
+        (uint amount0, uint amount1) = IDebondPair(pair).burn(to);
+        (address token0,) = DebondLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
