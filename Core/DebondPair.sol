@@ -23,6 +23,7 @@ contract DebondPair is IDebondPair, DebondERC20 {
     
     address public token0;
     address public token1;
+    // here : do a list of addresses of all the tokens in the pair (n-uplet)
 
     uint112 private reserve0;           // uses single storage slot, accessible via getReserves
     uint112 private reserve1;           // uses single storage slot, accessible via getReserves
@@ -128,14 +129,14 @@ contract DebondPair is IDebondPair, DebondERC20 {
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to, uint choice, /*nounce is time so does not need to be in parameters*/,mapping nounce, uint interest) external lock returns (uint liquidity) {
         // rate : how much interest you earn in fixed term 0 coupon.
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        (uint112 _reserve0, uint112 _reserveDbit,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balanceDbit = IERC20(tokenDbit).balanceOf(address(this));
         uint amount0 = balance0.sub(_reserve0);
-        uint amountDbit = balanceDbit.sub(_reserve1);
+        uint amountDbit = balanceDbit.sub(_reserveDbit);
 
-        bool feeOn = _mintFee(_reserve0, _reserve1);
-        uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
+        bool feeOn = _mintFee(_reserve0, _reserveDbit);
+        //uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         /*if (_totalSupply == 0) {
             liquidity = Math.sqrt(amount0.mul(amount0)).sub(MINIMUM_LIQUIDITY);
            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
@@ -155,30 +156,41 @@ contract DebondPair is IDebondPair, DebondERC20 {
              //remember to store _rate=rate(x) in a local variable for saving gas
              }
          }
-        _update(balance0, balanceDbit, _reserve0, _reserve1);
-        if (feeOn) kLast = uint(reserve0).mul(reserve1); 
+        _update(balance0, balanceDbit, _reserve0, _reserveDbit);
+        if (feeOn) kLast = uint(reserve0).mul(reserveDbit); 
         emit Mint(msg.sender, amount0, amount1);
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) external lock returns (uint amount0, uint amount1) {
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+    function burn(address to, uint amount) external lock returns (uint amount0, uint amount1) {
+        (uint112 _reserve0, ) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
-        address _token1 = token1;                                // gas savings
+        //address _token1 = token1;                                // gas savings
         uint balance0 = IERC20(_token0).balanceOf(address(this));
-        uint balance1 = IERC20(_token1).balanceOf(address(this));
-        uint liquidity = balanceOf[address(this)];
+        //uint balance1 = IERC20(_token1).balanceOf(address(this));
+        //uint liquidity = balanceOf[address(this)]; amount replaces this
 
         bool feeOn = _mintFee(_reserve0, _reserve1);
-        uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
-        amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
-        amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
-        require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
-        _burn(address(this), liquidity);
-        _safeTransfer(_token0, to, amount0);
-        _safeTransfer(_token1, to, amount1);
+        //uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
+        //amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
+        //amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
+        //require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
+        [address] bonds = IERC3475(/*???*/).getBonds(msg.sender) 
+        if(bond.amount<balance0){
+            redeem(address(this),bond.class, bond.nounce /* maybe put _nounce=bond.nounce to save gas */, amount);
+            _safeTransfer(_token0, to, amount);
+
+        }
+        else {
+            redeem(address(this),bond.class, bond.nounce /* maybe put _nounce=bond.nounce to save gas */, bond.amount-balance0);
+            _safeTransfer(_token0, to, bond.amount-balance0);
+
+        }
+
+        //what to do with dbit? burn?
+        
         balance0 = IERC20(_token0).balanceOf(address(this));
-        balance1 = IERC20(_token1).balanceOf(address(this));
+        
 
         _update(balance0, balance1, _reserve0, _reserve1);
         if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date

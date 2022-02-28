@@ -110,22 +110,26 @@ contract DebondRouter is IDebondRouter {
     //add step here : verify if the bond is reedemable.
     //when we redeem, we are not sure if we burn dbit or not
     function removeLiquidity(
-        address tokenA,
+        address tokenA, //we have the address of the bond, and we will then see how much of bonds you have
         //address tokenDbit,
-        uint amountA,
-        //uint amountAMin,
+        //uint liquidity, 
+        //uint amountA, 
+        uint amountAMin, // amount of bond we want to redeem (could be amount/2, or else...)
         //uint amountBMin,
         address to,
         uint deadline
+        //should have a param to know if flexible rate or fix rate, so we now if there is priority to redeem. 
     ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit);
-        //DebondPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        //send bond to pair
-        (uint amount0, uint amount1) = IDebondPair(pair).burn(to);
+        address pair = DebondLibrary.pairFor(factory, BondA, tokenDbit);
+        DebondPair(pair).transferFrom(msg.sender, pair, amountAMin); // send liquidity to pair
+        (uint amount0, uint amount1) = IDebondPair(pair).burn(to /*, token1, token2 */, amountAMin); // we have to specify here addresses because before, the information was in the "pair".
+        // But now, as there is more than two tokens in a pair, we should specify which token concerns us 
+
+        //amount0=token0, amount1 = tokendbit, interest
         (address token0,) = DebondLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
+        //require(amountA >= amountAMin, 'UniswapV2Router: INSUFFICIENT_A_AMOUNT');  We do not need that : bond can be lower than expected.
+        //require(amountB >= amountBMin, 'UniswapV2Router: INSUFFICIENT_B_AMOUNT');
     }
     function removeLiquidityETH(
         address token,
