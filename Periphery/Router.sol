@@ -47,13 +47,23 @@ contract DebondRouter is IDebondRouter {
         if (reserveA == 0 && reserveDbit == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired); // combien minter de dbit si il y a 0?
         } else {
-            uint amountDBITOptimal = DebondLibrary.HowMuchDbit(amountADesired, reserveA, reserveB); 
+            //uint amountDBITOptimal = DebondLibrary.HowMuchDbit(amountADesired, reserveA, reserveB); 
+            uint amountDBITOptimal = tokenA.price(stablecoin)*1.05**(log_e( totalSupply/100000))
             //How much debit should calculate how much debit should be minted, 
             //maybe should be added in core contracts and not in debond library
             require(amountBOptimal >= amountDBITMin, 'UniswapV2Router: formula of dbit minting changed too fast');
             (amountA, amountDBIT) = (amountADesired, amountDBITOptimal);
         }
     }
+
+
+    function _amountDbitToMint(uint amoutTokenA) internal virtual returns (uint amountDbit){
+        
+            amountdBit = tokenA.price(stablecoin)*1.05**(log_e( totalSupply/100000))
+
+    }
+
+
     function addLiquidity(
         address tokenA,
         
