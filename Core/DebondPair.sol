@@ -187,7 +187,7 @@ contract DebondPair is IDebondPair, DebondERC20 {
 
         }
 
-        //what to do with dbit? burn?
+        //what to do with dbit? burn? on burn exactement ce qu'on a mint en nb de token
         
         balance0 = IERC20(_token0).balanceOf(address(this));
         

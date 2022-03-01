@@ -57,11 +57,6 @@ contract DebondRouter is IDebondRouter {
     }
 
 
-    function _amountDbitToMint(uint amoutTokenA) internal virtual returns (uint amountDbit){
-        
-            amountdBit = tokenA.price(stablecoin)*1.05**(log_e( totalSupply/100000))
-
-    }
 
 
     function addLiquidity(
@@ -84,7 +79,7 @@ contract DebondRouter is IDebondRouter {
         address pair = DebondLibrary.pairFor(factory, tokenA, tokenDbit); // this is not a pair but a n-uplet
         
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA); // do not forget to update dbit balance in the pool
-        IDBITERC20(Dbit_address).mint(pair, amountDbit); // we need to do our dbit minting function
+        IDBITERC20(Dbit_address).mint(pair, amountDbit); // syntax
         //TransferHelper.safeTransferFrom(tokenDbit, msg.sender, pair, amountDbit); au lieu de minter puis d'envoyer vers
         // la pool, on mint directement vers la pool (address pair).
         liquidity = IDebondPair(pair).mint(to, /* amountA, does not need to be added*/ choice, nounce, interest, class); // mint of the bond, we do not precise class as we provide pair address
@@ -132,8 +127,8 @@ contract DebondRouter is IDebondRouter {
     ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
         address pair = DebondLibrary.pairFor(factory, BondA, tokenDbit);
         DebondPair(pair).transferFrom(msg.sender, pair, amountAMin); // send liquidity to pair
-        (uint amount0, uint amount1) = IDebondPair(pair).burn(to /*, token1, token2 */, amountAMin); // we have to specify here addresses because before, the information was in the "pair".
-        // But now, as there is more than two tokens in a pair, we should specify which token concerns us 
+        (uint amount0, uint amount1) = IDebondPair(pair).burn(to /*, token1, token2 */, amountAMin); 
+        
 
         //amount0=token0, amount1 = tokendbit, interest
         (address token0,) = DebondLibrary.sortTokens(tokenA, tokenB);
