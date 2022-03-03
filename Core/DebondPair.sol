@@ -23,12 +23,21 @@ contract DebondPair is IDebondPair, DebondERC20 {
     
     address public token0;
     address public token1;
+    address public DBITAddress;
     // here : do a list of addresses of all the tokens in the pair (n-uplet)
 
     uint112 private reserve0;           // uses single storage slot, accessible via getReserves
     uint112 private reserve1;           // uses single storage slot, accessible via getReserves
     //The reserves the pool has for each token type. We assume that the two represent the same amount of value, 
     //and therefore each token0 is worth reserve1/reserve0 token1's.
+
+
+
+    // need to update this :
+
+    mapping ( address => uint) private reserve;
+    
+
 
     uint32  private blockTimestampLast; // uses single storage slot, accessible via getReserves
     //The timestamp for the last block in which an exchange occurred, used to track exchange rates across time.
@@ -49,9 +58,9 @@ contract DebondPair is IDebondPair, DebondERC20 {
         unlocked = 1;
     }
 
-    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
-        _reserve0 = reserve0;
-        _reserve1 = reserve1;
+    function getReserves(address token) public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
+        _reserve0 = reserve[token];
+        _reserve1 = reserve[DBITAddress];
         _blockTimestampLast = blockTimestampLast;
     }
 
@@ -85,24 +94,24 @@ contract DebondPair is IDebondPair, DebondERC20 {
     }
 
     // update reserves and, on the first call per block, price accumulators
-    function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
+    function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1, address token0) private {
         require(balance0 <= uint112(-1) && balance1 <= uint112(-1), 'UniswapV2: OVERFLOW');
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
             // * never overflows, and + overflow is desired
-            price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
+            price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed; // need to understand this
             price1CumulativeLast += uint(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
         }
-        reserve0 = uint112(balance0);
-        reserve1 = uint112(balance1);
+        reserve[token0] = uint112(balance0);
+        reserve[DBIT] = uint112(balance1);
         blockTimestampLast = blockTimestamp;
         emit Sync(reserve0, reserve1);
     }
 
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
-        address feeTo = IUniswapV2Factory(factory).feeTo();
+        address feeTo = DebondFactory(factory).feeTo();
         feeOn = feeTo != address(0);
         uint _kLast = kLast; // gas savings
         if (feeOn) {
@@ -127,9 +136,9 @@ contract DebondPair is IDebondPair, DebondERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters? ,uint nounce */ uint interest) external lock returns (uint liquidity) {
+    function mint(address to, uint choice ,uint nounce, uint interest, address tokenA) external lock returns (uint liquidity) {
         // rate : how much interest you earn in fixed term 0 coupon.
-        (uint112 _reserve0, uint112 _reserveDbit,) = getReserves(); // gas savings
+        (uint112 _reserve0, uint112 _reserveDbit,) = getReserves(tokenA); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balanceDbit = IERC20(tokenDbit).balanceOf(address(this));
         uint amount0 = balance0.sub(_reserve0);
@@ -156,7 +165,7 @@ contract DebondPair is IDebondPair, DebondERC20 {
                 _mint(to, Amount0*percent + rate(Amount0*percent, intesrest), time, class2 /*on mint duDbit bond*/); 
              //remember to store _rate=rate(x) in a local variable for saving gas
              }  
-        _update(balance0, balanceDbit, _reserve0, _reserveDbit);
+        _update(balance0, balanceDbit, _reserve0, _reserveDbit, tokenA);
         if (feeOn) kLast = uint(reserve0).mul(reserveDbit); 
         emit Mint(msg.sender, amount0, amount1);
     }
