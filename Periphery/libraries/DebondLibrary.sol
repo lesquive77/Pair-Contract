@@ -1,6 +1,6 @@
 pragma solidity >=0.5.0;
 
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
+import '@Core/interfaces/DebondPair.sol';
 
 import "./SafeMath.sol";
 
@@ -78,5 +78,57 @@ library DebondLibrary {
             (uint reserveIn, uint reserveOut) = getReserves(factory, path[i - 1], path[i]);
             amounts[i - 1] = getAmountIn(amounts[i], reserveIn, reserveOut);
         }
+    }
+
+    function sigmoid(int256 _x , int256 _c) internal pure returns (int256 result) {
+        
+        int256 temp1;
+        int256 temp2;
+        
+        assembly{
+            temp1 := sub(_c,1000000000000000000)
+            temp2 := sub(_x,1000000000000000000)
+        }
+
+        temp1 = mul(temp1, _x);
+        temp2 = mul(temp2 ,_c);
+       
+        temp1 = inv(temp1);  
+        temp2 = inv(temp2);  
+
+        temp1 = exp2(temp1); //because exp2(mul(temp2,log2(2)), with log2(2)=1
+        temp2 = exp2(temp2);
+        
+        result = div(temp1, temp1 + temp2);
+        
+    
+    }
+
+    function fib(uint n) public pure returns(uint a) { 
+        if (n == 0) {
+            return 0;   
+        }
+        uint h = n / 2; 
+        uint mask = 1;
+        // find highest set bit in n
+        while(mask <= h) {
+            mask <<= 1;
+        }
+        mask >>= 1;
+        a = 1;
+        uint b = 1;
+        uint c;
+        while(mask > 0) {
+            c = a * a+b * b;          
+            if (n & mask > 0) {
+                b = b * (b + 2 * a);  
+                a = c;                
+            } else {
+                a = a * (2 * b - a);  
+                b = c;                
+            }
+            mask >>= 1;
+        }
+        return a;
     }
 }

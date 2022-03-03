@@ -1,4 +1,4 @@
-pragma solidity =0.5.16;
+pragma solidity =0.8.12;
 
 import './interfaces/IDebondPair.sol';
 import './DebondERC20.sol';
@@ -122,12 +122,12 @@ contract DebondPair is IDebondPair, DebondERC20 {
     }
 
     function rate(uint amount, uint interest ) public pure returns(uint result){
-        uint swaping = amount * interest;
-        result = reserveDbit/(reserveTokenA+swaping);
+        uint swaping = amount * interest; //needs the correct mul function
+        result = reserveDbit/(reserveTokenA+swaping); // needs correct div function. Check reserveTokenA, if it can be renamed.
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters*/,mapping nounce, uint interest) external lock returns (uint liquidity) {
+    function mint(address to, uint choice, /*nounce is time so does not need to be in parameters? ,uint nounce */ uint interest) external lock returns (uint liquidity) {
         // rate : how much interest you earn in fixed term 0 coupon.
         (uint112 _reserve0, uint112 _reserveDbit,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
@@ -144,18 +144,18 @@ contract DebondPair is IDebondPair, DebondERC20 {
             liquidity = amount0.mul(_totalSupply) / _reserve0;
         }   // take care later 
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');  */
+        
+        
         if (choice == 0) {
             for ( (time,percent) in nounce){
                 _mint(to, Amount0*percent, time, class1 /* a definir : on mint du tokenA bond*/);
                 _mint(to, rate(Amount0*percent, intesrest), time , class2 /*on mint duDbit bond*/);
             }
-         }
-         else{
-             for ( (time,percent) in nounce){
+        else{
+            for ( (time,percent) in nounce){
                 _mint(to, Amount0*percent + rate(Amount0*percent, intesrest), time, class2 /*on mint duDbit bond*/); 
              //remember to store _rate=rate(x) in a local variable for saving gas
-             }
-         }
+             }  
         _update(balance0, balanceDbit, _reserve0, _reserveDbit);
         if (feeOn) kLast = uint(reserve0).mul(reserveDbit); 
         emit Mint(msg.sender, amount0, amount1);
@@ -175,7 +175,7 @@ contract DebondPair is IDebondPair, DebondERC20 {
         //amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
         //amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
         //require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
-        [address] bonds = IERC3475(/*???*/).getBonds(msg.sender) 
+        [address] bonds = IERC3475(/*???*/).getBonds(msg.sender) ;
         if(bond.amount<balance0){
             redeem(address(this),bond.class, bond.nounce /* maybe put _nounce=bond.nounce to save gas */, amount);
             _safeTransfer(_token0, to, amount);
