@@ -3,7 +3,7 @@ pragma solidity =0.5.8;
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
-import './interfaces/IUniswapV2Router02.sol';
+import './interfaces/IDebondRouter.sol';
 import './libraries/DebondLibrary.sol';
 import './libraries/SafeMath.sol';
 import './interfaces/IERC20.sol';
@@ -12,10 +12,10 @@ import './interfaces/IWETH.sol';
 contract DebondRouter is IDebondRouter {
     using SafeMath for uint;
 
-    address public immutable override factory;
-    address public immutable override WETH;
+    address public /*immutable override*/ factory;
+    address public /*immutable override*/ WETH;
 
-    address public immutable override DBIT; // here changede
+    address public /*immutable override*/ DBIT; // here changede
 
     modifier ensure(uint deadline) {
         require(deadline >= block.timestamp, 'UniswapV2Router: EXPIRED');
@@ -27,9 +27,9 @@ contract DebondRouter is IDebondRouter {
         WETH = _WETH;
     }
 
-    receive() external payable {
+    /*receive() external payable {
         assert(msg.sender == WETH); // only accept ETH via fallback from the WETH contract
-    }
+    }*/
 
     // **** ADD LIQUIDITY ****
     function _addLiquidity(
@@ -39,8 +39,8 @@ contract DebondRouter is IDebondRouter {
         uint amountDBITMin
     ) internal virtual returns (uint amountA, uint amountDBIT) {
         // create the pair if it doesn't exist yet
-        if (IDebondFactory(factory).getPair(tokenA, DBIT) == address(0)) {
-            IDebondFactory(factory).createPair(tokenA, DBIT); // remplacer par création nouvelle classde erc3475, 
+        if (IDebondFactory(factory).allTokens(tokenA) == address(0)) {
+            IDebondFactory(factory).addToken(tokenA); // remplacer par création nouvelle classde erc3475, 
             //vérifier si liste de paires autorisées.
         }
         (uint reserveA, reserveDbit) = DebondLibrary.getReserves(factory, tokenA, DBIT);

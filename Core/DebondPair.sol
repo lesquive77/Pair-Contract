@@ -155,16 +155,16 @@ contract DebondPair is IDebondPair, DebondERC20 {
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');  */
         
         
-        if (choice == 0) {
+        /*if (choice == 0) {
             for ( (time,percent) in nounce){
-                _mint(to, Amount0*percent, time, class1 /* a definir : on mint du tokenA bond*/);
-                _mint(to, rate(Amount0*percent, intesrest), time , class2 /*on mint duDbit bond*/);
+                issue(to, Amount0*percent, time, class1 ); // a definir : on mint du tokenA bond
+                issue(to, rate(Amount0*percent, intesrest), time , class2 ); //on mint duDbit bond
             }
         else{
             for ( (time,percent) in nounce){
-                _mint(to, Amount0*percent + rate(Amount0*percent, intesrest), time, class2 /*on mint duDbit bond*/); 
+                issue(to, Amount0*percent + rate(Amount0*percent, intesrest), time, class2 ); //on mint duDbit bond
              //remember to store _rate=rate(x) in a local variable for saving gas
-             }  
+             }  */
         _update(balance0, balanceDbit, _reserve0, _reserveDbit, tokenA);
         if (feeOn) kLast = uint(reserve0).mul(reserveDbit); 
         emit Mint(msg.sender, amount0, amount1);
@@ -184,7 +184,7 @@ contract DebondPair is IDebondPair, DebondERC20 {
         //amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
         //amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
         //require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
-        [address] bonds = IERC3475(/*???*/).getBonds(msg.sender) ;
+        //[address] bonds = IERC3475(/*???*/).getBonds(msg.sender) ;
         if(bond.amount<balance0){
             redeem(address(this),bond.class, bond.nounce /* maybe put _nounce=bond.nounce to save gas */, amount);
             _safeTransfer(_token0, to, amount);
