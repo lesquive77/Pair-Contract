@@ -1,7 +1,7 @@
 {
   "name": "pair-contract",
   "version": "1.0.0",
-  "description": "",
+  "description": "Pair contract",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
